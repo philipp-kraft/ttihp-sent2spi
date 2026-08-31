@@ -1,0 +1,43 @@
+[*]
+[*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
+[*] Mon Aug 31 18:28:13 2026
+[*]
+[dumpfile] "/workspaces/ttihp-sent2spi/test/tb_sent_receiver.fst"
+[dumpfile_mtime] "Mon Aug 31 18:19:11 2026"
+[dumpfile_size] 36038
+[savefile] "/workspaces/ttihp-sent2spi/test/tb_sent_receiver.gtkw"
+[timestart] 168450700
+[size] 1800 1084
+[pos] -1 -1
+*-15.439726 168587100 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_sent_receiver.
+[treeopen] tb_sent_receiver.i_sent_receiver.
+[sst_width] 276
+[signals_width] 254
+[sst_expanded] 1
+[sst_vpaned_height] 326
+@200
+-SENT_RECEIVER
+@28
+tb_sent_receiver.i_sent_receiver.clk
+tb_sent_receiver.i_sent_receiver.rst_n
+@200
+-
+@28
+tb_sent_receiver.i_sent_receiver.sent_in_sync
+tb_sent_receiver.i_sent_receiver.sent_falling
+@24
+tb_sent_receiver.i_sent_receiver.tick_counter_q[15:0]
+@100000029
+tb_sent_receiver.i_sent_receiver.state_q[1:0]
+@24
+tb_sent_receiver.i_sent_receiver.tick_len_q[15:0]
+@200
+-
+@22
+tb_sent_receiver.i_sent_receiver.frame_data[31:0]
+@28
+tb_sent_receiver.i_sent_receiver.frame_valid
+tb_sent_receiver.i_sent_receiver.frame_error
+[pattern_trace] 1
+[pattern_trace] 0
