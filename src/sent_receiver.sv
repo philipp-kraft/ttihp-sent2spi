@@ -65,6 +65,7 @@ module sent_receiver (
   // FSM
   // -------------------------------------------------------------------------
   typedef enum logic [1:0] {
+    ST_IDLE,
     ST_SYNC,
     ST_NIBBLE,
     ST_CRC
@@ -72,42 +73,87 @@ module sent_receiver (
 
   sent_state_t state_d, state_q;
 
-  logic [15:0] tick_len_d, tick_len_q; // length of a SENT tick in cycles
+  localparam int NUM_NIBBLES = 8;  // 1 status nibble + 6 data nibbles +1 crc nibble
+
+  logic [15:0] tick_len_d, tick_len_q;  // length of a SENT tick in cycles
+  logic [2:0] nibble_id_d, nibble_id_q;  // which nibble we are on
+  logic [31:0] frame_shift_d, frame_shift_q;  // data, shifted in nibble by nibble
+  logic [31:0] frame_data_d, frame_data_q;  // last valid frame, held until overwritten
+  logic frame_valid_d, frame_valid_q;  // one-cycle pulse
+  logic frame_error_d, frame_error_q;  // one-cycle pulse
+  logic [3:0] nibble;  // decoded value of pulse
+
+  assign frame_data  = frame_data_q;
+  assign frame_valid = frame_valid_q;
+  assign frame_error = frame_error_q;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      tick_len_q <= '0;
+      state_q       <= ST_IDLE;
+      tick_len_q    <= '0;
+      nibble_id_q   <= '0;
+      frame_shift_q <= '0;
+      frame_data_q  <= '0;
+      frame_valid_q <= '0;
+      frame_error_q <= '0;
     end else begin
-      tick_len_q <= tick_len_d;
+      tick_len_q    <= tick_len_d;
+      nibble_id_q   <= nibble_id_d;
+      frame_shift_q <= frame_shift_d;
+      frame_data_q  <= frame_data_d;
+      frame_valid_q <= frame_valid_d;
+      frame_error_q <= frame_error_d;
+      state_q       <= state_d;
     end
   end
 
   always_comb begin
-    case (state_q)
-      ST_SYNC: begin
-        tick_len_d = tick_len_q;
+    state_d       = state_q;
+    tick_len_d    = tick_len_q;
+    nibble_id_d   = nibble_id_q;
+    frame_shift_d = frame_shift_q;
+    frame_data_d  = frame_data_q;
+    frame_valid_d = 1'b0;
+    frame_error_d = 1'b0;
+    nibble        = '0;
 
+    case (state_q)
+      ST_IDLE: begin
         if (sent_falling) begin
-          tick_len_d = (tick_counter_q) / 56;
-          state_d = ST_NIBBLE;
+          state_d = ST_SYNC;
         end
       end
-      ST_NIBBLE: state_d = ST_SYNC;
-      ST_CRC: state_d = ST_SYNC;
+      ST_SYNC: begin
+        if (sent_falling) begin
+          tick_len_d    = tick_counter_q / 56;
+          nibble_id_d   = '0;
+          frame_shift_d = '0;
+          state_d       = ST_NIBBLE;
+        end
+      end
+      ST_NIBBLE: begin
+        if (sent_falling) begin
+          nibble = tick_counter_q / tick_len_q - 16'd12;
+          frame_shift_d = {frame_shift_q[27:0], nibble};
+
+          if (nibble_id_q == NUM_NIBBLES - 1) begin
+            state_d = ST_CRC;
+          end else begin
+            nibble_id_d = nibble_id_q + 1'b1;
+          end
+        end
+      end
+      ST_CRC: begin
+        if (frame_shift_q[3:0] == 4'b0000) begin
+          state_d       = ST_SYNC;
+          frame_valid_d = 1'b1;
+          frame_data_d  = frame_shift_q;
+        end else begin
+          frame_error_d = 1'b1;
+        end
+      end
       default: state_d = ST_SYNC;
     endcase
   end
-
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      state_q <= ST_SYNC;
-    end else begin
-      state_q <= state_d;
-    end
-  end
-
-  assign frame_data = '0;
-  assign frame_valid = '0;
-  assign frame_error = '0;
 
 endmodule
