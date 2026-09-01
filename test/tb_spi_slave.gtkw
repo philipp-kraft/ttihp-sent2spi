@@ -1,0 +1,29 @@
+[*]
+[*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
+[*] Tue Sep  1 16:45:52 2026
+[*]
+[dumpfile] "/workspaces/ttihp-sent2spi/test/tb_spi_slave.fst"
+[dumpfile_mtime] "Tue Sep  1 16:40:54 2026"
+[dumpfile_size] 1431
+[savefile] "/workspaces/ttihp-sent2spi/test/tb_spi_slave.gtkw"
+[timestart] 0
+[size] 1800 1084
+[pos] -6 -6
+*-20.000000 940001 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_spi_slave.
+[sst_width] 276
+[signals_width] 158
+[sst_expanded] 1
+[sst_vpaned_height] 326
+@28
+tb_spi_slave.clk
+tb_spi_slave.rst_n
+tb_spi_slave.cs
+tb_spi_slave.sck
+tb_spi_slave.miso
+@22
+tb_spi_slave.frame_data[31:0]
+@23
+tb_spi_slave.i_spi_slave.shift_reg[31:0]
+[pattern_trace] 1
+[pattern_trace] 0

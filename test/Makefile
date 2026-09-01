@@ -6,7 +6,19 @@ SIM ?= icarus
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
+
+# DUT selects which unit testbench to build: sent_receiver (default) or spi_slave
+DUT ?= sent_receiver
+
+ifeq ($(DUT),spi_slave)
+PROJECT_SOURCES = sync2ff.sv spi_slave.sv
+TOPLEVEL ?= tb_spi_slave
+COCOTB_TEST_MODULES ?= test_spi_slave
+else
 PROJECT_SOURCES = sync2ff.sv sent_receiver.sv
+TOPLEVEL ?= tb_sent_receiver
+COCOTB_TEST_MODULES ?= test_sent_receiver
+endif
 
 ifneq ($(GATES),yes)
 
@@ -34,11 +46,7 @@ endif
 COMPILE_ARGS 		+= -I$(SRC_DIR)
 
 # Include the testbench sources:
-VERILOG_SOURCES += $(PWD)/tb_sent_receiver.v
-TOPLEVEL ?= tb_sent_receiver
-
-# List test modules to run, separated by commas and without the .py suffix:
-COCOTB_TEST_MODULES ?= test_sent_receiver
+VERILOG_SOURCES += $(PWD)/$(TOPLEVEL).v
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
