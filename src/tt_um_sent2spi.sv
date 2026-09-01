@@ -21,6 +21,7 @@ module tt_um_sent2spi (
   localparam bit [7:0] UIO_OE = 8'b00000100;
   logic miso;
 
+  assign uo_out  = 8'b0;
   assign uio_out = {5'b0, miso, 2'b0};
   assign uio_oe  = UIO_OE;
 
