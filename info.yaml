@@ -5,7 +5,7 @@ project:
   discord:      "phikay"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
   description:  "Configurable SENT receiver with SPI slave interface"      # One line description of what your project does
   language:     "SystemVerilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
-  clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
+  clock_hz:     50000000       # Clock frequency in Hz (or 0 if not applicable)
 
   # How many tiles your design occupies? A single tile is about 167x108 uM.
   tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
@@ -17,13 +17,17 @@ project:
   # Source files must be in ./src and you must list each source file separately, one per line.
   # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
-    - "project.v"
+    - "sync2ff.sv"
+    - "sent_receiver.sv"
+    - "spi_slave.sv"
+    - "sent2spi.sv"
+    - "tt_um_sent2spi.sv"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: ""
+  ui[0]: "sent_in"
   ui[1]: ""
   ui[2]: ""
   ui[3]: ""
@@ -43,10 +47,10 @@ pinout:
   uo[7]: ""
 
   # Bidirectional pins
-  uio[0]: ""
-  uio[1]: ""
-  uio[2]: ""
-  uio[3]: ""
+  uio[0]: "SPI CS"
+  uio[1]: "SPI MOSI"
+  uio[2]: "SPI MISO"
+  uio[3]: "SPI SCK"
   uio[4]: ""
   uio[5]: ""
   uio[6]: ""

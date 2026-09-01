@@ -18,8 +18,20 @@ module tt_um_sent2spi (
     input logic rst_n
 );
 
-  // we never use the bidirectional io as output
-  assign uio_out = 0;
-  assign uio_oe  = 0;
+  localparam bit [7:0] UIO_OE = 8'b00000100;
+  logic miso;
+
+  assign uio_out = {5'b0, miso, 2'b0};
+  assign uio_oe  = UIO_OE;
+
+  sent2spi i_sent2spi (
+      .clk(clk),
+      .rst_n(rst_n),
+      .sent_in(ui_in[0]),
+      .cs(uio_in[0]),
+      .mosi(uio_in[1]),
+      .miso(miso),
+      .sck(uio_in[3])
+  );
 
 endmodule
