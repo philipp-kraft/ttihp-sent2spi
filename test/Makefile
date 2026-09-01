@@ -7,17 +7,21 @@ FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
 
-# DUT selects which unit testbench to build: sent_receiver (default) or spi_slave
-DUT ?= sent_receiver
+# DUT selects which testbench to build: top (default), sent_receiver, or spi_slave
+DUT ?= top
 
-ifeq ($(DUT),spi_slave)
-PROJECT_SOURCES = sync2ff.sv spi_slave.sv
-TOPLEVEL ?= tb_spi_slave
-COCOTB_TEST_MODULES ?= test_spi_slave
-else
+ifeq ($(DUT),top)
+PROJECT_SOURCES = sync2ff.sv sent_receiver.sv spi_slave.sv sent2spi.sv tt_um_sent2spi.sv
+TOPLEVEL ?= tb
+COCOTB_TEST_MODULES ?= test
+else ifeq ($(DUT),sent_receiver)
 PROJECT_SOURCES = sync2ff.sv sent_receiver.sv
 TOPLEVEL ?= tb_sent_receiver
 COCOTB_TEST_MODULES ?= test_sent_receiver
+else
+PROJECT_SOURCES = sync2ff.sv spi_slave.sv
+TOPLEVEL ?= tb_spi_slave
+COCOTB_TEST_MODULES ?= test_spi_slave
 endif
 
 ifneq ($(GATES),yes)
@@ -29,8 +33,9 @@ COMPILE_ARGS 		+= -g2012
 
 else
 
-# Gate level simulation:
 SIM_BUILD				= sim_build/gl
+TOPLEVEL				= tb
+COCOTB_TEST_MODULES	= test
 COMPILE_ARGS    += -DGL_TEST
 COMPILE_ARGS    += -DFUNCTIONAL
 COMPILE_ARGS    += -DSIM
