@@ -12,7 +12,7 @@ LOW_TICKS = 5  # SENT low-pulse width, in ticks
 
 def sent_crc4(nibbles):
     """SAE J2716 CRC-4: seed 5, poly x^4+x^3+x^2+1 (0x13), over the status
-    nibble and the 6 data nibbles. Mirrors crc4_step() in sent_receiver.sv."""
+    nibble and the data nibbles. Mirrors crc4_step() in sent_receiver.sv."""
     crc = 5
     for nibble in nibbles:
         crc ^= nibble
@@ -22,6 +22,18 @@ def sent_crc4(nibbles):
             else:
                 crc = (crc << 1) & 0xF
     return crc
+
+
+async def reset(dut, data_nibble_count=6):
+    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
+    cocotb.start_soon(clock.start())
+
+    dut.rst_n.value = 0
+    dut.sent_in.value = 1  # SENT idles high
+    dut.data_nibble_count.value = data_nibble_count
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 2)
 
 
 async def send_pulse(dut, period_ticks):
@@ -38,14 +50,7 @@ async def send_pulse(dut, period_ticks):
 async def test_reset(dut):
     dut._log.info("Start")
 
-    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
-    cocotb.start_soon(clock.start())
-
-    dut.rst_n.value = 0
-    dut.sent_in.value = 1  # SENT idles high
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 5)
+    await reset(dut)
 
     assert dut.frame_valid.value == 0
     assert dut.frame_error.value == 0
@@ -57,14 +62,7 @@ async def test_reset(dut):
 async def test_tick_calibration(dut):
     dut._log.info("Start")
 
-    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
-    cocotb.start_soon(clock.start())
-
-    dut.rst_n.value = 0
-    dut.sent_in.value = 1  # SENT idles high
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 2)
+    await reset(dut)
 
     # Drive one full sync pulse (56 ticks) and then start the next pulse
     await send_pulse(dut, 56)
@@ -83,14 +81,7 @@ async def test_tick_calibration(dut):
 async def test_nibble_decode(dut):
     dut._log.info("Start")
 
-    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
-    cocotb.start_soon(clock.start())
-
-    dut.rst_n.value = 0
-    dut.sent_in.value = 1  # SENT idles high
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 2)
+    await reset(dut)
 
     # 1 status nibble + 6 data nibbles, followed by their computed CRC nibble
     payload = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6]
@@ -127,17 +118,45 @@ async def test_nibble_decode(dut):
 
 
 @cocotb.test()
+async def test_configurable_nibble_count(dut):
+    """data_nibble_count should be free to differ from the default of 6."""
+    dut._log.info("Start")
+
+    await reset(dut, data_nibble_count=3)
+
+    # 1 status nibble + 3 data nibbles, followed by their computed CRC nibble
+    payload = [0x3, 0x1, 0x2, 0xF]
+    nibbles = payload + [sent_crc4(payload)]
+
+    await send_pulse(dut, 56)
+    for value in nibbles:
+        await send_pulse(dut, value + 12)
+    dut.sent_in.value = 0
+
+    for _ in range(50):
+        await RisingEdge(dut.clk)
+        if dut.frame_valid.value == 1:
+            break
+    else:
+        assert False, "frame_valid never pulsed"
+
+    assert dut.frame_error.value == 0, "frame_error asserted unexpectedly"
+
+    expected = 0
+    for value in nibbles:
+        expected = ((expected << 4) | value) & 0xFFFFFFFF
+
+    frame_data = dut.frame_data.value.to_unsigned()
+    assert frame_data == expected, f"expected {expected:#010x}, got {frame_data:#010x}"
+
+    await ClockCycles(dut.clk, 50)
+
+
+@cocotb.test()
 async def test_crc_error(dut):
     dut._log.info("Start")
 
-    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
-    cocotb.start_soon(clock.start())
-
-    dut.rst_n.value = 0
-    dut.sent_in.value = 1  # SENT idles high
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 2)
+    await reset(dut)
 
     # Same payload as test_nibble_decode, but with the CRC nibble corrupted.
     payload = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6]
@@ -192,14 +211,7 @@ async def test_crc_error(dut):
 async def test_timeout_recovery(dut):
     dut._log.info("Start")
 
-    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
-    cocotb.start_soon(clock.start())
-
-    dut.rst_n.value = 0
-    dut.sent_in.value = 1  # SENT idles high
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 2)
+    await reset(dut)
 
     # Start a pulse and never close it: sent_in stays low forever, so the
     # watchdog (tick_counter_q wrapping at 65535) must fire instead of the
@@ -241,14 +253,7 @@ async def test_timeout_recovery(dut):
 async def test_nibble_out_of_range(dut):
     dut._log.info("Start")
 
-    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
-    cocotb.start_soon(clock.start())
-
-    dut.rst_n.value = 0
-    dut.sent_in.value = 1  # SENT idles high
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 2)
+    await reset(dut)
 
     # Calibrate, then send a pulse shorter than the minimum valid nibble
     # length (12 ticks); this must be flagged as an error, not truncated

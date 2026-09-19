@@ -11,6 +11,8 @@ module sent_receiver (
 
     input logic sent_in,
 
+    input logic [2:0] data_nibble_count,  // 1-6 data nibbles, latched once per frame
+
     output logic [31:0] frame_data,
     output logic        frame_valid,
     output logic        frame_error
@@ -113,8 +115,6 @@ module sent_receiver (
 
   sent_state_t state_d, state_q;
 
-  localparam int NUM_NIBBLES = 8;  // 1 status nibble + 6 data nibbles +1 crc nibble
-
   // SAE J2716 CRC-4: seed 5, poly x^4+x^3+x^2+1 (0x13), computed over the
   // status nibble and the 6 data nibbles, checked against the CRC nibble.
   localparam logic [3:0] CRC_SEED = 4'h5;
@@ -135,6 +135,7 @@ module sent_receiver (
   endfunction
 
   logic [15:0] tick_len_d, tick_len_q;  // length of a SENT tick in cycles
+  logic [2:0] nibble_count_d, nibble_count_q;  // data nibbles, latched once per frame
   logic [2:0] nibble_id_d, nibble_id_q;  // which nibble we are on
   logic [31:0] frame_shift_d, frame_shift_q;  // data, shifted in nibble by nibble
   logic [31:0] frame_data_d, frame_data_q;  // last valid frame, held until overwritten
@@ -149,29 +150,32 @@ module sent_receiver (
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      state_q       <= ST_IDLE;
-      tick_len_q    <= '0;
-      nibble_id_q   <= '0;
-      frame_shift_q <= '0;
-      frame_data_q  <= '0;
-      frame_valid_q <= '0;
-      frame_error_q <= '0;
-      crc_q         <= CRC_SEED;
+      state_q        <= ST_IDLE;
+      tick_len_q     <= '0;
+      nibble_count_q <= 3'd6;
+      nibble_id_q    <= '0;
+      frame_shift_q  <= '0;
+      frame_data_q   <= '0;
+      frame_valid_q  <= '0;
+      frame_error_q  <= '0;
+      crc_q          <= CRC_SEED;
     end else begin
-      tick_len_q    <= tick_len_d;
-      nibble_id_q   <= nibble_id_d;
-      frame_shift_q <= frame_shift_d;
-      frame_data_q  <= frame_data_d;
-      frame_valid_q <= frame_valid_d;
-      frame_error_q <= frame_error_d;
-      state_q       <= state_d;
-      crc_q         <= crc_d;
+      tick_len_q     <= tick_len_d;
+      nibble_count_q <= nibble_count_d;
+      nibble_id_q    <= nibble_id_d;
+      frame_shift_q  <= frame_shift_d;
+      frame_data_q   <= frame_data_d;
+      frame_valid_q  <= frame_valid_d;
+      frame_error_q  <= frame_error_d;
+      state_q        <= state_d;
+      crc_q          <= crc_d;
     end
   end
 
   always_comb begin
-    state_d       = state_q;
-    tick_len_d    = tick_len_q;
+    state_d        = state_q;
+    tick_len_d     = tick_len_q;
+    nibble_count_d = nibble_count_q;
     nibble_id_d   = nibble_id_q;
     frame_shift_d = frame_shift_q;
     frame_data_d  = frame_data_q;
@@ -191,11 +195,12 @@ module sent_receiver (
           state_d       = ST_IDLE;
           frame_error_d = 1'b1;
         end else if (sent_falling) begin
-          tick_len_d    = tick_counter_q / 56;
-          nibble_id_d   = '0;
-          frame_shift_d = '0;
-          crc_d         = CRC_SEED;
-          state_d       = ST_NIBBLE;
+          tick_len_d     = tick_counter_q / 56;
+          nibble_count_d = data_nibble_count;
+          nibble_id_d    = '0;
+          frame_shift_d  = '0;
+          crc_d          = CRC_SEED;
+          state_d        = ST_NIBBLE;
         end
       end
       ST_NIBBLE: begin
@@ -210,7 +215,7 @@ module sent_receiver (
             nibble = tick_cnt_q - 16'd12;
             frame_shift_d = {frame_shift_q[27:0], nibble};
 
-            if (nibble_id_q == NUM_NIBBLES - 1) begin
+            if (nibble_id_q == nibble_count_q + 3'd1) begin
               // this nibble is the CRC nibble itself; it is not folded into the running CRC
               state_d = ST_CRC;
             end else begin
