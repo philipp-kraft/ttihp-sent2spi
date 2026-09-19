@@ -47,6 +47,7 @@ module sent_receiver (
   // -------------------------------------------------------------------------
   // Pulse Timing
   // -------------------------------------------------------------------------
+  // tick_counter_q is a raw clock-cycle counter, reset on every falling edge.
   logic [15:0] tick_counter_d, tick_counter_q;
 
   always_comb begin
@@ -58,6 +59,41 @@ module sent_receiver (
       tick_counter_q <= '0;
     end else begin
       tick_counter_q <= tick_counter_d;
+    end
+  end
+
+  // Per-nibble pulse length, measured directly in SENT ticks instead of
+  // dividing tick_counter_q by the runtime-variable tick_len_q.
+  logic [15:0] subtick_d, subtick_q;
+  logic [15:0] tick_cnt_d, tick_cnt_q;
+
+  always_comb begin
+    if (sent_falling) begin
+      subtick_d = 16'd1;
+    end else if (subtick_q == tick_len_q) begin
+      subtick_d = 16'd1;
+    end else begin
+      subtick_d = subtick_q + 1'b1;
+    end
+  end
+
+  always_comb begin
+    if (sent_falling) begin
+      tick_cnt_d = '0;
+    end else if (subtick_q == tick_len_q - 1'b1) begin
+      tick_cnt_d = tick_cnt_q + 1'b1;
+    end else begin
+      tick_cnt_d = tick_cnt_q;
+    end
+  end
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      subtick_q  <= '0;
+      tick_cnt_q <= '0;
+    end else begin
+      subtick_q  <= subtick_d;
+      tick_cnt_q <= tick_cnt_d;
     end
   end
 
@@ -157,7 +193,7 @@ module sent_receiver (
       end
       ST_NIBBLE: begin
         if (sent_falling) begin
-          nibble = tick_counter_q / tick_len_q - 16'd12;
+          nibble = tick_cnt_q - 16'd12;
           frame_shift_d = {frame_shift_q[27:0], nibble};
 
           if (nibble_id_q == NUM_NIBBLES - 1) begin
