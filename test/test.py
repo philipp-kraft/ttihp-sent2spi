@@ -16,6 +16,20 @@ UIO_MISO = 2
 UIO_SCK = 3
 
 
+def sent_crc4(nibbles):
+    """SAE J2716 CRC-4: seed 5, poly x^4+x^3+x^2+1 (0x13), over the status
+    nibble and the 6 data nibbles. Mirrors crc4_step() in sent_receiver.sv."""
+    crc = 5
+    for nibble in nibbles:
+        crc ^= nibble
+        for _ in range(4):
+            if crc & 0x8:
+                crc = ((crc << 1) ^ 0x13) & 0xF
+            else:
+                crc = (crc << 1) & 0xF
+    return crc
+
+
 async def send_pulse(dut, period_ticks):
     low_cycles = LOW_TICKS * TICK_CYCLES
     high_cycles = (period_ticks - LOW_TICKS) * TICK_CYCLES
@@ -82,8 +96,9 @@ async def test_sent_to_spi(dut):
 
     await reset(dut)
 
-    # 1 status nibble + 6 data nibbles + 1 crc nibble
-    nibbles = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6, 0x0]
+    # 1 status nibble + 6 data nibbles, followed by their computed CRC nibble
+    payload = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6]
+    nibbles = payload + [sent_crc4(payload)]
     expected = 0
     for value in nibbles:
         expected = ((expected << 4) | value) & 0xFFFFFFFF
