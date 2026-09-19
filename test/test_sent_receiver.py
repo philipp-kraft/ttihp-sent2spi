@@ -235,3 +235,53 @@ async def test_timeout_recovery(dut):
         assert False, "frame_valid never pulsed after recovering from a timeout"
 
     await ClockCycles(dut.clk, 50)
+
+
+@cocotb.test()
+async def test_nibble_out_of_range(dut):
+    dut._log.info("Start")
+
+    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
+    cocotb.start_soon(clock.start())
+
+    dut.rst_n.value = 0
+    dut.sent_in.value = 1  # SENT idles high
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 2)
+
+    # Calibrate, then send a pulse shorter than the minimum valid nibble
+    # length (12 ticks); this must be flagged as an error, not truncated
+    # into a bogus in-range value.
+    await send_pulse(dut, 56)
+    await send_pulse(dut, 8)
+    dut.sent_in.value = 0
+
+    for _ in range(20):
+        await RisingEdge(dut.clk)
+        if dut.frame_error.value == 1:
+            break
+    else:
+        assert False, "frame_error never pulsed on an out-of-range pulse"
+
+    assert dut.frame_valid.value == 0, "frame_valid asserted on an out-of-range pulse"
+
+    # FSM must have returned to idle and be ready for a fresh frame.
+    payload = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6]
+    nibbles = payload + [sent_crc4(payload)]
+
+    dut.sent_in.value = 1
+    await ClockCycles(dut.clk, 5)
+    await send_pulse(dut, 56)
+    for value in nibbles:
+        await send_pulse(dut, value + 12)
+    dut.sent_in.value = 0
+
+    for _ in range(50):
+        await RisingEdge(dut.clk)
+        if dut.frame_valid.value == 1:
+            break
+    else:
+        assert False, "frame_valid never pulsed after recovering from an out-of-range pulse"
+
+    await ClockCycles(dut.clk, 50)

@@ -203,15 +203,20 @@ module sent_receiver (
           state_d       = ST_IDLE;
           frame_error_d = 1'b1;
         end else if (sent_falling) begin
-          nibble = tick_cnt_q - 16'd12;
-          frame_shift_d = {frame_shift_q[27:0], nibble};
-
-          if (nibble_id_q == NUM_NIBBLES - 1) begin
-            // this nibble is the CRC nibble itself; it is not folded into the running CRC
-            state_d = ST_CRC;
+          if (tick_cnt_q < 16'd12 || tick_cnt_q > 16'd27) begin
+            state_d       = ST_IDLE;
+            frame_error_d = 1'b1;
           end else begin
-            crc_d       = crc4_step(crc_q, nibble);
-            nibble_id_d = nibble_id_q + 1'b1;
+            nibble = tick_cnt_q - 16'd12;
+            frame_shift_d = {frame_shift_q[27:0], nibble};
+
+            if (nibble_id_q == NUM_NIBBLES - 1) begin
+              // this nibble is the CRC nibble itself; it is not folded into the running CRC
+              state_d = ST_CRC;
+            end else begin
+              crc_d       = crc4_step(crc_q, nibble);
+              nibble_id_d = nibble_id_q + 1'b1;
+            end
           end
         end
       end
