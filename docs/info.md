@@ -9,15 +9,20 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-The chip receives a SENT signal on `ui[0]` and decodes it into a 32-bit frame. The latest
-decoded frame is made available over an SPI slave interface on the bidirectional pins: CS
-(`uio[0]`), MOSI (`uio[1]`), MISO (`uio[2]`) and SCK (`uio[3]`). An SPI master can read out the
-32-bit frame at any time, MSB first.
+The chip receives a SENT signal on `ui[0]` and decodes it into a 32-bit frame, checked against
+its SAE J2716 CRC-4. The latest good frame is made available over an SPI slave interface on the
+bidirectional pins: CS (`uio[0]`), MOSI (`uio[1]`), MISO (`uio[2]`) and SCK (`uio[3]`). An SPI
+master can read out the 32-bit frame at any time, MSB first.
+
+`uo[0]` (data_valid) is set once at least one frame has been decoded successfully since reset.
+`uo[1]` (data_error) is set when the most recently completed frame failed its CRC check, and
+clears again on the next good frame.
 
 ## How to test
 
-Drive a SENT signal into `ui[0]`. Once a full frame has been received, pull `uio[0]` (CS) low
-and clock `uio[3]` (SCK) 32 times to shift the decoded frame out on `uio[2]` (MISO), MSB first.
+Drive a SENT signal into `ui[0]`. Once a full frame has been received (`uo[0]` goes high), pull
+`uio[0]` (CS) low and clock `uio[3]` (SCK) 32 times to shift the decoded frame out on `uio[2]`
+(MISO), MSB first.
 
 ## External hardware
 

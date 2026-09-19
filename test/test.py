@@ -116,3 +116,34 @@ async def test_sent_to_spi(dut):
     value = await spi_read(dut)
     dut._log.info(f"read {value:#010x}, expected {expected:#010x}")
     assert value == expected, f"expected {expected:#010x}, got {value:#010x}"
+
+    assert int(dut.uo_out.value) == 0b01, f"expected data_valid set, got {int(dut.uo_out.value):#04b}"
+
+
+@cocotb.test()
+async def test_crc_error_status(dut):
+    """A bad CRC must set data_error on uo_out without setting data_valid, and a
+    good frame afterwards must clear data_error and set data_valid."""
+    dut._log.info("Start")
+
+    await reset(dut)
+
+    payload = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6]
+    bad_nibbles = payload + [sent_crc4(payload) ^ 0x1]
+
+    await send_pulse(dut, 56)
+    for value in bad_nibbles:
+        await send_pulse(dut, value + 12)
+    dut.ui_in.value = 0
+    await ClockCycles(dut.clk, 20)
+
+    assert int(dut.uo_out.value) == 0b10, f"expected data_error set, got {int(dut.uo_out.value):#04b}"
+
+    good_nibbles = payload + [sent_crc4(payload)]
+    await send_pulse(dut, 56)
+    for value in good_nibbles:
+        await send_pulse(dut, value + 12)
+    dut.ui_in.value = 0
+    await ClockCycles(dut.clk, 20)
+
+    assert int(dut.uo_out.value) == 0b01, f"expected data_valid set, got {int(dut.uo_out.value):#04b}"

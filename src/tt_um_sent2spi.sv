@@ -20,8 +20,9 @@ module tt_um_sent2spi (
 
   localparam bit [7:0] UIO_OE = 8'b00000100;
   logic miso;
+  logic data_valid, data_error;
 
-  assign uo_out  = 8'b0;
+  assign uo_out  = {6'b0, data_error, data_valid};
   assign uio_out = {5'b0, miso, 2'b0};
   assign uio_oe  = UIO_OE;
 
@@ -32,7 +33,9 @@ module tt_um_sent2spi (
       .cs(uio_in[0]),
       .mosi(uio_in[1]),
       .miso(miso),
-      .sck(uio_in[3])
+      .sck(uio_in[3]),
+      .data_valid(data_valid),
+      .data_error(data_error)
   );
 
 endmodule

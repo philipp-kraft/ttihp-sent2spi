@@ -9,7 +9,7 @@ CLK_PERIOD_NS = 20  # 50 MHz simulation clock
 SCK_HALF_PERIOD_CYCLES = 8  # clock cycles per SPI half-clock (>> synchronizer latency)
 
 
-async def reset(dut, frame_data=0, frame_valid=0, frame_error=0):
+async def reset(dut, frame_data=0):
     clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
     cocotb.start_soon(clock.start())
 
@@ -18,8 +18,6 @@ async def reset(dut, frame_data=0, frame_valid=0, frame_error=0):
     dut.mosi.value = 0
     dut.sck.value = 0
     dut.frame_data.value = frame_data
-    dut.frame_valid.value = frame_valid
-    dut.frame_error.value = frame_error
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 10)
