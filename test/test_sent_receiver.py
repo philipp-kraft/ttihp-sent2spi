@@ -186,3 +186,52 @@ async def test_crc_error(dut):
     assert frame_data == expected, f"expected {expected:#010x}, got {frame_data:#010x}"
 
     await ClockCycles(dut.clk, 50)
+
+
+@cocotb.test()
+async def test_timeout_recovery(dut):
+    dut._log.info("Start")
+
+    clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
+    cocotb.start_soon(clock.start())
+
+    dut.rst_n.value = 0
+    dut.sent_in.value = 1  # SENT idles high
+    await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 2)
+
+    # Start a pulse and never close it: sent_in stays low forever, so the
+    # watchdog (tick_counter_q wrapping at 65535) must fire instead of the
+    # FSM waiting on a falling edge that will never come.
+    dut.sent_in.value = 0
+
+    await ClockCycles(dut.clk, 65525)
+    for _ in range(20):
+        await RisingEdge(dut.clk)
+        if dut.frame_error.value == 1:
+            break
+    else:
+        assert False, "frame_error never pulsed after timeout"
+
+    assert dut.frame_valid.value == 0, "frame_valid asserted on a timeout"
+
+    # FSM must have returned to idle and be ready for a fresh frame.
+    payload = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6]
+    nibbles = payload + [sent_crc4(payload)]
+
+    dut.sent_in.value = 1
+    await ClockCycles(dut.clk, 5)
+    await send_pulse(dut, 56)
+    for value in nibbles:
+        await send_pulse(dut, value + 12)
+    dut.sent_in.value = 0
+
+    for _ in range(50):
+        await RisingEdge(dut.clk)
+        if dut.frame_valid.value == 1:
+            break
+    else:
+        assert False, "frame_valid never pulsed after recovering from a timeout"
+
+    await ClockCycles(dut.clk, 50)

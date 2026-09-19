@@ -62,6 +62,10 @@ module sent_receiver (
     end
   end
 
+  // no falling edge for a full tick_counter_q cycle (65535 clocks, ~1.6ms), let's resync
+  logic sent_timeout;
+  assign sent_timeout = &tick_counter_q;
+
   // Per-nibble pulse length, measured directly in SENT ticks instead of
   // dividing tick_counter_q by the runtime-variable tick_len_q.
   logic [15:0] subtick_d, subtick_q;
@@ -183,7 +187,10 @@ module sent_receiver (
         end
       end
       ST_SYNC: begin
-        if (sent_falling) begin
+        if (sent_timeout) begin
+          state_d       = ST_IDLE;
+          frame_error_d = 1'b1;
+        end else if (sent_falling) begin
           tick_len_d    = tick_counter_q / 56;
           nibble_id_d   = '0;
           frame_shift_d = '0;
@@ -192,7 +199,10 @@ module sent_receiver (
         end
       end
       ST_NIBBLE: begin
-        if (sent_falling) begin
+        if (sent_timeout) begin
+          state_d       = ST_IDLE;
+          frame_error_d = 1'b1;
+        end else if (sent_falling) begin
           nibble = tick_cnt_q - 16'd12;
           frame_shift_d = {frame_shift_q[27:0], nibble};
 
