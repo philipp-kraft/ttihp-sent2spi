@@ -28,8 +28,9 @@ the bit you're changing. Writing `config` mid-frame doesn't disturb a frame alre
 received; the new settings take effect on the next one.
 
 `uo[0]` (data_valid) is set once at least one frame has been decoded successfully since reset.
-`uo[1]` (data_error) is set when the most recently completed frame failed its CRC check, and
-clears again on the next good frame.
+`uo[1]` (data_error) is set when the most recent frame attempt failed - a bad CRC, an
+out-of-spec pulse length, or a watchdog timeout waiting on the sensor - and clears again on the
+next good frame.
 
 ## How to test
 

@@ -138,7 +138,8 @@ module spi_slave (
     case (cmd_reg_q[6:0])
       ADDR_CONFIG:
       read_value = {27'b0, crc_check_enable_q, pause_pulse_enable_q, data_nibble_count_q};
-      default: read_value = frame_data;  // ADDR_FRAME_DATA and unknown addresses
+      ADDR_FRAME_DATA: read_value = frame_data;
+      default: read_value = frame_data;  // unassigned addresses also read as frame_data
     endcase
   end
 
