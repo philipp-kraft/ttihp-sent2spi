@@ -18,6 +18,10 @@ UIO_SCK = 3
 ADDR_FRAME_DATA = 0x00
 ADDR_CONFIG = 0x01
 
+CFG_PAUSE_PULSE_ENABLE = 1 << 3
+CFG_CRC_CHECK_ENABLE = 1 << 4
+CFG_DEFAULT = CFG_CRC_CHECK_ENABLE | 6  # crc checking on, no pause, 6 data nibbles
+
 
 def sent_crc4(nibbles):
     """SAE J2716 CRC-4: seed 5, poly x^4+x^3+x^2+1 (0x13), over the status
@@ -156,11 +160,12 @@ async def test_config_nibble_count(dut):
     await reset(dut)
 
     value = await spi_read(dut, ADDR_CONFIG)
-    assert value == 6, f"expected default of 6, got {value}"
+    assert value == CFG_DEFAULT, f"expected default {CFG_DEFAULT:#07b}, got {value:#07b}"
 
-    await spi_write(dut, ADDR_CONFIG, 3)
+    await spi_write(dut, ADDR_CONFIG, CFG_CRC_CHECK_ENABLE | 3)
     value = await spi_read(dut, ADDR_CONFIG)
-    assert value == 3, f"expected 3 after write, got {value}"
+    expected_config = CFG_CRC_CHECK_ENABLE | 3
+    assert value == expected_config, f"expected {expected_config:#07b} after write, got {value:#07b}"
 
     # 1 status nibble + 3 data nibbles, followed by their computed CRC nibble
     payload = [0x3, 0x1, 0x2, 0xF]

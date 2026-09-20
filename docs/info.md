@@ -17,13 +17,15 @@ interface on the bidirectional pins: CS (`uio[0]`), MOSI (`uio[1]`), MISO (`uio[
 Every SPI transaction is an 8-bit command byte (bit 7 = write, bits 6:0 = register address), MSB
 first, followed by a 32-bit data word MSB first (shifted out on a read, or in on a write):
 
-| Address | Register     | Access | Contents                                                                  |
-|---------|--------------|--------|-----------------------------------------------------------------------------|
-| `0x00`  | `frame_data` | RO     | the latest good decoded frame                                              |
-| `0x01`  | `config`     | RW     | bits `[2:0]`: data-nibble count, 1-6 (default 6); bit `[3]`: pause pulse present after the CRC nibble (default off) |
+| Address | Register     | Access | Contents                                                                     |
+|---------|--------------|--------|--------------------------------------------------------------------------------|
+| `0x00`  | `frame_data` | RO     | the latest good decoded frame                                                 |
+| `0x01`  | `config`     | RW     | bit `[4]`: CRC check enabled (default on); bit `[3]`: pause pulse present after the CRC nibble (default off); bits `[2:0]`: data-nibble count, 1-6 (default 6) |
 
-Writes to `config` outside the 1-6 nibble-count range are ignored. Writing `config` mid-frame
-doesn't disturb a frame already being received; the new settings take effect on the next one.
+Writes to `config` outside the 1-6 nibble-count range are ignored; every other bit is written as
+given. Since a write replaces the whole register, always send the full desired value, not just
+the bit you're changing. Writing `config` mid-frame doesn't disturb a frame already being
+received; the new settings take effect on the next one.
 
 `uo[0]` (data_valid) is set once at least one frame has been decoded successfully since reset.
 `uo[1]` (data_error) is set when the most recently completed frame failed its CRC check, and

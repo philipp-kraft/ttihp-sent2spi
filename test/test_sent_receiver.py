@@ -24,7 +24,7 @@ def sent_crc4(nibbles):
     return crc
 
 
-async def reset(dut, data_nibble_count=6, pause_pulse_enable=0):
+async def reset(dut, data_nibble_count=6, pause_pulse_enable=0, crc_check_enable=1):
     clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
     cocotb.start_soon(clock.start())
 
@@ -32,6 +32,7 @@ async def reset(dut, data_nibble_count=6, pause_pulse_enable=0):
     dut.sent_in.value = 1  # SENT idles high
     dut.data_nibble_count.value = data_nibble_count
     dut.pause_pulse_enable.value = pause_pulse_enable
+    dut.crc_check_enable.value = crc_check_enable
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 2)
@@ -336,6 +337,42 @@ async def test_pause_pulse(dut):
 
     tick_len = dut.i_sent_receiver.tick_len_q.value.to_unsigned()
     assert tick_len == TICK_CYCLES, f"pause pulse corrupted calibration: expected {TICK_CYCLES}, got {tick_len}"
+
+    expected = 0
+    for value in nibbles:
+        expected = ((expected << 4) | value) & 0xFFFFFFFF
+
+    frame_data = dut.frame_data.value.to_unsigned()
+    assert frame_data == expected, f"expected {expected:#010x}, got {frame_data:#010x}"
+
+    await ClockCycles(dut.clk, 50)
+
+
+@cocotb.test()
+async def test_crc_check_disabled(dut):
+    """With crc_check_enable cleared, a frame with a bad CRC must still be
+    accepted as valid instead of raising frame_error."""
+    dut._log.info("Start")
+
+    await reset(dut, crc_check_enable=0)
+
+    payload = [0x3, 0x1, 0x2, 0xF, 0x0, 0x9, 0x6]
+    bad_crc = sent_crc4(payload) ^ 0x1
+    nibbles = payload + [bad_crc]
+
+    await send_pulse(dut, 56)
+    for value in nibbles:
+        await send_pulse(dut, value + 12)
+    dut.sent_in.value = 0
+
+    for _ in range(50):
+        await RisingEdge(dut.clk)
+        if dut.frame_valid.value == 1:
+            break
+    else:
+        assert False, "frame_valid never pulsed with CRC checking disabled"
+
+    assert dut.frame_error.value == 0, "frame_error asserted with CRC checking disabled"
 
     expected = 0
     for value in nibbles:

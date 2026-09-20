@@ -78,6 +78,7 @@ async def test_reset(dut):
     assert dut.miso.value == 0
     assert dut.data_nibble_count.value == 6, "data_nibble_count should default to 6"
     assert dut.pause_pulse_enable.value == 0, "pause_pulse_enable should default to 0"
+    assert dut.crc_check_enable.value == 1, "crc_check_enable should default to 1"
 
 
 @cocotb.test()
@@ -174,6 +175,26 @@ async def test_config_pause_pulse_bit(dut):
     value = await spi_read(dut, ADDR_CONFIG)
     assert value == 0b0011, f"expected 0b0011, got {value:#06b}"
     assert dut.pause_pulse_enable.value == 0, "pause_pulse_enable didn't clear"
+
+
+@cocotb.test()
+async def test_config_crc_check_bit(dut):
+    dut._log.info("Start")
+
+    await reset(dut)
+
+    # bit 4 = crc_check_enable, bits [2:0] = data_nibble_count; clear crc_check_enable
+    await spi_write(dut, ADDR_CONFIG, 0b00110)
+
+    value = await spi_read(dut, ADDR_CONFIG)
+    assert value == 0b00110, f"expected 0b00110, got {value:#07b}"
+    assert dut.crc_check_enable.value == 0, "crc_check_enable didn't clear"
+
+    # writes are whole-register: re-set it back to enabled
+    await spi_write(dut, ADDR_CONFIG, 0b10110)
+    value = await spi_read(dut, ADDR_CONFIG)
+    assert value == 0b10110, f"expected 0b10110, got {value:#07b}"
+    assert dut.crc_check_enable.value == 1, "crc_check_enable didn't re-enable"
 
 
 @cocotb.test()

@@ -17,13 +17,15 @@ module spi_slave (
     input  logic sck,
 
     output logic [2:0] data_nibble_count,
-    output logic       pause_pulse_enable
+    output logic       pause_pulse_enable,
+    output logic       crc_check_enable
 );
 
   // Every transaction is a command byte (bit 7 = write, bits 6:0 = 7-bit
   // register address), MSB first, followed by a 32-bit data word MSB first.
   localparam logic [6:0] ADDR_FRAME_DATA = 7'h00;  // read-only
-  // read/write: bits [2:0] = data_nibble_count, bit [3] = pause_pulse_enable
+  // read/write: bits [2:0] = data_nibble_count, bit [3] = pause_pulse_enable,
+  // bit [4] = crc_check_enable
   localparam logic [6:0] ADDR_CONFIG = 7'h01;
   localparam logic [2:0] NIBBLE_COUNT_DEFAULT = 3'd6;
 
@@ -104,6 +106,7 @@ module spi_slave (
       wdata_reg_q           <= '0;
       data_nibble_count_q  <= NIBBLE_COUNT_DEFAULT;
       pause_pulse_enable_q <= 1'b0;
+      crc_check_enable_q   <= 1'b1;
     end else if (cs_active && sck_rising) begin
       if (bit_cnt_q < 6'd8) begin
         cmd_reg_q <= {cmd_reg_q[6:0], mosi_sync};
@@ -111,6 +114,7 @@ module spi_slave (
         wdata_reg_q <= wdata_next;
         if (bit_cnt_q == 6'd39 && cmd_reg_q[7] && cmd_reg_q[6:0] == ADDR_CONFIG) begin
           pause_pulse_enable_q <= wdata_next[3];
+          crc_check_enable_q   <= wdata_next[4];
           if (wdata_next[2:0] != 3'd0 && wdata_next[2:0] != 3'd7) begin
             data_nibble_count_q <= wdata_next[2:0];
           end
@@ -121,8 +125,10 @@ module spi_slave (
 
   logic [2:0] data_nibble_count_q;
   logic       pause_pulse_enable_q;
+  logic       crc_check_enable_q;
   assign data_nibble_count  = data_nibble_count_q;
   assign pause_pulse_enable = pause_pulse_enable_q;
+  assign crc_check_enable   = crc_check_enable_q;
 
   // ------------------------------------------------------------------
   // MISO shift register (MSB first), loaded once the address is known
@@ -130,8 +136,9 @@ module spi_slave (
   logic [31:0] read_value;
   always_comb begin
     case (cmd_reg_q[6:0])
-      ADDR_CONFIG: read_value = {28'b0, pause_pulse_enable_q, data_nibble_count_q};
-      default:     read_value = frame_data;  // ADDR_FRAME_DATA and unknown addresses
+      ADDR_CONFIG:
+      read_value = {27'b0, crc_check_enable_q, pause_pulse_enable_q, data_nibble_count_q};
+      default: read_value = frame_data;  // ADDR_FRAME_DATA and unknown addresses
     endcase
   end
 

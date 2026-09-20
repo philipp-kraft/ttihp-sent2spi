@@ -25,6 +25,7 @@ module sent2spi (
   logic        frame_error;
   logic [ 2:0] data_nibble_count;
   logic        pause_pulse_enable;
+  logic        crc_check_enable;
 
   sent_receiver i_sent_receiver (
       .clk(clk),
@@ -32,6 +33,7 @@ module sent2spi (
       .sent_in(sent_in),
       .data_nibble_count(data_nibble_count),
       .pause_pulse_enable(pause_pulse_enable),
+      .crc_check_enable(crc_check_enable),
       .frame_data(frame_data),
       .frame_valid(frame_valid),
       .frame_error(frame_error)
@@ -46,7 +48,8 @@ module sent2spi (
       .miso(miso),
       .sck(sck),
       .data_nibble_count(data_nibble_count),
-      .pause_pulse_enable(pause_pulse_enable)
+      .pause_pulse_enable(pause_pulse_enable),
+      .crc_check_enable(crc_check_enable)
   );
 
   // latches the one-cycle frame_valid/frame_error pulses so uo_out can be polled

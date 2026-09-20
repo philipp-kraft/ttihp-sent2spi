@@ -24,6 +24,7 @@ module tb_spi_slave ();
 
   wire [2:0] data_nibble_count;
   wire pause_pulse_enable;
+  wire crc_check_enable;
 
   spi_slave i_spi_slave (
       .clk               (clk),
@@ -34,7 +35,8 @@ module tb_spi_slave ();
       .miso              (miso),
       .sck               (sck),
       .data_nibble_count (data_nibble_count),
-      .pause_pulse_enable(pause_pulse_enable)
+      .pause_pulse_enable(pause_pulse_enable),
+      .crc_check_enable  (crc_check_enable)
   );
 
 endmodule

@@ -17,6 +17,7 @@ module tb_sent_receiver ();
   reg sent_in;
   reg [2:0] data_nibble_count;
   reg pause_pulse_enable;
+  reg crc_check_enable;
 
   wire [31:0] frame_data;
   wire frame_valid;
@@ -28,6 +29,7 @@ module tb_sent_receiver ();
       .sent_in           (sent_in),
       .data_nibble_count (data_nibble_count),
       .pause_pulse_enable(pause_pulse_enable),
+      .crc_check_enable  (crc_check_enable),
       .frame_data        (frame_data),
       .frame_valid       (frame_valid),
       .frame_error       (frame_error)
