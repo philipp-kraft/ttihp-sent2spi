@@ -16,6 +16,8 @@ module tb_spi_slave ();
   reg rst_n;
 
   reg [31:0] frame_data;
+  reg data_valid;
+  reg data_error;
 
   reg cs;
   reg mosi;
@@ -30,6 +32,8 @@ module tb_spi_slave ();
       .clk               (clk),
       .rst_n             (rst_n),
       .frame_data        (frame_data),
+      .data_valid        (data_valid),
+      .data_error        (data_error),
       .cs                (cs),
       .mosi              (mosi),
       .miso              (miso),

@@ -10,9 +10,10 @@ SCK_HALF_PERIOD_CYCLES = 8  # clock cycles per SPI half-clock (>> synchronizer l
 
 ADDR_FRAME_DATA = 0x00
 ADDR_CONFIG = 0x01
+ADDR_STATUS = 0x02
 
 
-async def reset(dut, frame_data=0):
+async def reset(dut, frame_data=0, data_valid=0, data_error=0):
     clock = Clock(dut.clk, CLK_PERIOD_NS, unit="ns")
     cocotb.start_soon(clock.start())
 
@@ -21,6 +22,8 @@ async def reset(dut, frame_data=0):
     dut.mosi.value = 0
     dut.sck.value = 0
     dut.frame_data.value = frame_data
+    dut.data_valid.value = data_valid
+    dut.data_error.value = data_error
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 10)
@@ -195,6 +198,37 @@ async def test_config_crc_check_bit(dut):
     value = await spi_read(dut, ADDR_CONFIG)
     assert value == 0b10110, f"expected 0b10110, got {value:#07b}"
     assert dut.crc_check_enable.value == 1, "crc_check_enable didn't re-enable"
+
+
+@cocotb.test()
+async def test_read_status(dut):
+    dut._log.info("Start")
+
+    await reset(dut, data_valid=0, data_error=0)
+    value = await spi_read(dut, ADDR_STATUS)
+    assert value == 0b00, f"expected 0b00, got {value:#04b}"
+
+    await reset(dut, data_valid=1, data_error=0)
+    value = await spi_read(dut, ADDR_STATUS)
+    assert value == 0b01, f"expected 0b01, got {value:#04b}"
+
+    await reset(dut, data_valid=1, data_error=1)
+    value = await spi_read(dut, ADDR_STATUS)
+    assert value == 0b11, f"expected 0b11, got {value:#04b}"
+
+
+@cocotb.test()
+async def test_write_status_is_ignored(dut):
+    """data_valid/data_error are read-only; writing to their address must
+    not have any effect (there's nothing to write back to anyway)."""
+    dut._log.info("Start")
+
+    await reset(dut, data_valid=1, data_error=0)
+
+    await spi_write(dut, ADDR_STATUS, 0xFFFFFFFF)
+
+    value = await spi_read(dut, ADDR_STATUS)
+    assert value == 0b01, f"expected 0b01, got {value:#04b}"
 
 
 @cocotb.test()

@@ -17,6 +17,7 @@ UIO_SCK = 3
 
 ADDR_FRAME_DATA = 0x00
 ADDR_CONFIG = 0x01
+ADDR_STATUS = 0x02
 
 CFG_PAUSE_PULSE_ENABLE = 1 << 3
 CFG_CRC_CHECK_ENABLE = 1 << 4
@@ -149,6 +150,9 @@ async def test_sent_to_spi(dut):
     assert value == expected, f"expected {expected:#010x}, got {value:#010x}"
 
     assert int(dut.uo_out.value) == 0b01, f"expected data_valid set, got {int(dut.uo_out.value):#04b}"
+
+    status = await spi_read(dut, ADDR_STATUS)
+    assert status == 0b01, f"expected status 0b01 over SPI, got {status:#04b}"
 
 
 @cocotb.test()

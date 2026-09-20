@@ -43,6 +43,8 @@ module sent2spi (
       .clk(clk),
       .rst_n(rst_n),
       .frame_data(frame_data),
+      .data_valid(data_valid_q),
+      .data_error(data_error_q),
       .cs(cs),
       .mosi(mosi),
       .miso(miso),

@@ -21,6 +21,7 @@ first, followed by a 32-bit data word MSB first (shifted out on a read, or in on
 |---------|--------------|--------|--------------------------------------------------------------------------------|
 | `0x00`  | `frame_data` | RO     | the latest good decoded frame                                                 |
 | `0x01`  | `config`     | RW     | bit `[4]`: CRC check enabled (default on); bit `[3]`: pause pulse present after the CRC nibble (default off); bits `[2:0]`: data-nibble count, 1-6 (default 6) |
+| `0x02`  | `status`     | RO     | bit `[1]`: data_error; bit `[0]`: data_valid (same as `uo[1:0]`, see below)    |
 
 Writes to `config` outside the 1-6 nibble-count range are ignored; every other bit is written as
 given. Since a write replaces the whole register, always send the full desired value, not just
@@ -30,7 +31,8 @@ received; the new settings take effect on the next one.
 `uo[0]` (data_valid) is set once at least one frame has been decoded successfully since reset.
 `uo[1]` (data_error) is set when the most recent frame attempt failed - a bad CRC, an
 out-of-spec pulse length, or a watchdog timeout waiting on the sensor - and clears again on the
-next good frame.
+next good frame. Both bits are also readable over SPI at `status` for a master with no free GPIO
+to watch them on directly.
 
 ## How to test
 

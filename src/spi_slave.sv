@@ -10,6 +10,8 @@ module spi_slave (
     input logic rst_n,
 
     input logic [31:0] frame_data,
+    input logic        data_valid,
+    input logic        data_error,
 
     input  logic cs,
     input  logic mosi,
@@ -27,6 +29,7 @@ module spi_slave (
   // read/write: bits [2:0] = data_nibble_count, bit [3] = pause_pulse_enable,
   // bit [4] = crc_check_enable
   localparam logic [6:0] ADDR_CONFIG = 7'h01;
+  localparam logic [6:0] ADDR_STATUS = 7'h02;  // read-only: bit 0 = data_valid, bit 1 = data_error
   localparam logic [2:0] NIBBLE_COUNT_DEFAULT = 3'd6;
 
   // ------------------------------------------------------------------
@@ -138,6 +141,7 @@ module spi_slave (
     case (cmd_reg_q[6:0])
       ADDR_CONFIG:
       read_value = {27'b0, crc_check_enable_q, pause_pulse_enable_q, data_nibble_count_q};
+      ADDR_STATUS: read_value = {30'b0, data_error, data_valid};
       ADDR_FRAME_DATA: read_value = frame_data;
       default: read_value = frame_data;  // unassigned addresses also read as frame_data
     endcase
