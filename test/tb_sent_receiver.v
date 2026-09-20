@@ -16,19 +16,21 @@ module tb_sent_receiver ();
   reg rst_n;
   reg sent_in;
   reg [2:0] data_nibble_count;
+  reg pause_pulse_enable;
 
   wire [31:0] frame_data;
   wire frame_valid;
   wire frame_error;
 
   sent_receiver i_sent_receiver (
-      .clk              (clk),
-      .rst_n            (rst_n),
-      .sent_in          (sent_in),
-      .data_nibble_count(data_nibble_count),
-      .frame_data       (frame_data),
-      .frame_valid      (frame_valid),
-      .frame_error      (frame_error)
+      .clk               (clk),
+      .rst_n             (rst_n),
+      .sent_in           (sent_in),
+      .data_nibble_count (data_nibble_count),
+      .pause_pulse_enable(pause_pulse_enable),
+      .frame_data        (frame_data),
+      .frame_valid       (frame_valid),
+      .frame_error       (frame_error)
   );
 
 endmodule

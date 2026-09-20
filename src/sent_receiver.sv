@@ -12,6 +12,7 @@ module sent_receiver (
     input logic sent_in,
 
     input logic [2:0] data_nibble_count,  // 1-6 data nibbles, latched once per frame
+    input logic       pause_pulse_enable,  // one extra pulse to skip after the CRC nibble
 
     output logic [31:0] frame_data,
     output logic        frame_valid,
@@ -106,11 +107,12 @@ module sent_receiver (
   // -------------------------------------------------------------------------
   // FSM
   // -------------------------------------------------------------------------
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     ST_IDLE,
     ST_SYNC,
     ST_NIBBLE,
-    ST_CRC
+    ST_CRC,
+    ST_PAUSE
   } sent_state_t;
 
   sent_state_t state_d, state_q;
@@ -136,6 +138,7 @@ module sent_receiver (
 
   logic [15:0] tick_len_d, tick_len_q;  // length of a SENT tick in cycles
   logic [2:0] nibble_count_d, nibble_count_q;  // data nibbles, latched once per frame
+  logic pause_enable_d, pause_enable_q;  // latched once per frame
   logic [2:0] nibble_id_d, nibble_id_q;  // which nibble we are on
   logic [31:0] frame_shift_d, frame_shift_q;  // data, shifted in nibble by nibble
   logic [31:0] frame_data_d, frame_data_q;  // last valid frame, held until overwritten
@@ -153,6 +156,7 @@ module sent_receiver (
       state_q        <= ST_IDLE;
       tick_len_q     <= '0;
       nibble_count_q <= 3'd6;
+      pause_enable_q <= 1'b0;
       nibble_id_q    <= '0;
       frame_shift_q  <= '0;
       frame_data_q   <= '0;
@@ -162,6 +166,7 @@ module sent_receiver (
     end else begin
       tick_len_q     <= tick_len_d;
       nibble_count_q <= nibble_count_d;
+      pause_enable_q <= pause_enable_d;
       nibble_id_q    <= nibble_id_d;
       frame_shift_q  <= frame_shift_d;
       frame_data_q   <= frame_data_d;
@@ -176,6 +181,7 @@ module sent_receiver (
     state_d        = state_q;
     tick_len_d     = tick_len_q;
     nibble_count_d = nibble_count_q;
+    pause_enable_d = pause_enable_q;
     nibble_id_d   = nibble_id_q;
     frame_shift_d = frame_shift_q;
     frame_data_d  = frame_data_q;
@@ -197,6 +203,7 @@ module sent_receiver (
         end else if (sent_falling) begin
           tick_len_d     = tick_counter_q / 56;
           nibble_count_d = data_nibble_count;
+          pause_enable_d = pause_pulse_enable;
           nibble_id_d    = '0;
           frame_shift_d  = '0;
           crc_d          = CRC_SEED;
@@ -226,12 +233,26 @@ module sent_receiver (
         end
       end
       ST_CRC: begin
-        state_d = ST_SYNC;
+        if (pause_enable_q) begin
+          state_d = ST_PAUSE;
+        end else begin
+          state_d = ST_SYNC;
+        end
         if (frame_shift_q[3:0] == crc_q) begin
           frame_valid_d = 1'b1;
           frame_data_d  = frame_shift_q;
         end else begin
           frame_error_d = 1'b1;
+        end
+      end
+      ST_PAUSE: begin
+        // one extra pulse between the CRC nibble and the next sync pulse;
+        // its length carries no data and is ignored, just consume it
+        if (sent_timeout) begin
+          state_d       = ST_IDLE;
+          frame_error_d = 1'b1;
+        end else if (sent_falling) begin
+          state_d = ST_SYNC;
         end
       end
       default: state_d = ST_SYNC;

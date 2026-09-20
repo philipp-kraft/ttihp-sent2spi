@@ -23,16 +23,18 @@ module tb_spi_slave ();
   reg sck;
 
   wire [2:0] data_nibble_count;
+  wire pause_pulse_enable;
 
   spi_slave i_spi_slave (
-      .clk              (clk),
-      .rst_n            (rst_n),
-      .frame_data       (frame_data),
-      .cs               (cs),
-      .mosi             (mosi),
-      .miso             (miso),
-      .sck              (sck),
-      .data_nibble_count(data_nibble_count)
+      .clk               (clk),
+      .rst_n             (rst_n),
+      .frame_data        (frame_data),
+      .cs                (cs),
+      .mosi              (mosi),
+      .miso              (miso),
+      .sck               (sck),
+      .data_nibble_count (data_nibble_count),
+      .pause_pulse_enable(pause_pulse_enable)
   );
 
 endmodule

@@ -77,6 +77,7 @@ async def test_reset(dut):
 
     assert dut.miso.value == 0
     assert dut.data_nibble_count.value == 6, "data_nibble_count should default to 6"
+    assert dut.pause_pulse_enable.value == 0, "pause_pulse_enable should default to 0"
 
 
 @cocotb.test()
@@ -153,6 +154,26 @@ async def test_config_write_out_of_range_rejected(dut):
     await spi_write(dut, ADDR_CONFIG, 7)
     value = await spi_read(dut, ADDR_CONFIG)
     assert value == 6, f"expected default 6 after rejecting 7, got {value}"
+
+
+@cocotb.test()
+async def test_config_pause_pulse_bit(dut):
+    dut._log.info("Start")
+
+    await reset(dut)
+
+    # bit 3 = pause_pulse_enable, bits [2:0] = data_nibble_count
+    await spi_write(dut, ADDR_CONFIG, 0b1011)
+
+    value = await spi_read(dut, ADDR_CONFIG)
+    assert value == 0b1011, f"expected 0b1011, got {value:#06b}"
+    assert dut.data_nibble_count.value == 3, "data_nibble_count output didn't update"
+    assert dut.pause_pulse_enable.value == 1, "pause_pulse_enable output didn't update"
+
+    await spi_write(dut, ADDR_CONFIG, 0b0011)
+    value = await spi_read(dut, ADDR_CONFIG)
+    assert value == 0b0011, f"expected 0b0011, got {value:#06b}"
+    assert dut.pause_pulse_enable.value == 0, "pause_pulse_enable didn't clear"
 
 
 @cocotb.test()
